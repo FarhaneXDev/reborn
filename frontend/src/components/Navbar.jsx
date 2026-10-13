@@ -7,18 +7,27 @@ export default function Navbar({ onOpenSos, userProfile, onToggleMobileMenu }) {
   const [noContactDays, setNoContactDays] = useState(null);
 
   useEffect(() => {
+    const now = new Date();
     const formatted = new Intl.DateTimeFormat('fr-FR', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
-    }).format(new Date());
+    }).format(now);
     setTodayFormatted(formatted);
 
     if (userProfile?.no_contact_start_date) {
-      const startDate = new Date(userProfile.no_contact_start_date);
-      const today = new Date();
-      const diffTime = today - startDate;
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      // Découper la date sans passer par le parseur UTC de Date(string)
+      // pour éviter les décalages de fuseau horaire entre navigateurs/appareils
+      const [sYear, sMonth, sDay] = userProfile.no_contact_start_date.split('-').map(Number);
+      const tYear = now.getFullYear();
+      const tMonth = now.getMonth();
+      const tDay = now.getDate();
+
+      // Comparaison en jours calendaires stricts
+      const startUtc = Date.UTC(sYear, sMonth - 1, sDay);
+      const todayUtc = Date.UTC(tYear, tMonth, tDay);
+
+      const diffDays = Math.round((todayUtc - startUtc) / (1000 * 60 * 60 * 24));
       if (diffDays >= 0) {
         setNoContactDays(diffDays);
       }

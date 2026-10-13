@@ -22,11 +22,26 @@ function ParcoursContent() {
 
   const fetchMissions = async () => {
     try {
-      const data = await journeysApi.getAllMissions();
-      const list = Array.isArray(data) ? data : data.results || [];
+      // Récupérer à la fois toutes les missions et celle du jour
+      const [allData, todayData] = await Promise.all([
+        journeysApi.getAllMissions(),
+        journeysApi.getToday().catch(() => null),
+      ]);
+
+      const list = Array.isArray(allData) ? allData : allData.results || [];
       setMissions(list);
-      if (list.length > 0 && !activeMission) {
-        setActiveMission(list[0]);
+
+      // Sélectionner par défaut la mission du jour actuel si disponible, sinon la première
+      if (list.length > 0) {
+        if (!activeMission) {
+          const currentDayNum = todayData?.current_day_number || 1;
+          const matchToday = list.find((m) => m.day_number === currentDayNum) || list[0];
+          setActiveMission(matchToday);
+        } else {
+          // Mettre à jour l'activeMission avec ses données fraîches
+          const refreshed = list.find((m) => m.id === activeMission.id);
+          if (refreshed) setActiveMission(refreshed);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -38,6 +53,31 @@ function ParcoursContent() {
   useEffect(() => {
     fetchMissions();
   }, []);
+
+  const handleMissionStatusChange = (newStatus, missionId) => {
+    // Mettre à jour immédiatement dans le state local pour une réactivité instantanée
+    setMissions((prev) =>
+      prev.map((m) => {
+        if (m.id === missionId) {
+          const updatedProgress = m.user_progress
+            ? { ...m.user_progress, mission_status: newStatus }
+            : { mission_status: newStatus };
+          return { ...m, user_progress: updatedProgress };
+        }
+        return m;
+      })
+    );
+    if (activeMission?.id === missionId) {
+      setActiveMission((prev) => ({
+        ...prev,
+        user_progress: prev.user_progress
+          ? { ...prev.user_progress, mission_status: newStatus }
+          : { mission_status: newStatus },
+      }));
+    }
+    // Re-synchroniser avec l'API en arrière-plan
+    fetchMissions();
+  };
 
   const filteredMissions = selectedTheme === 'all'
     ? missions
@@ -83,7 +123,7 @@ function ParcoursContent() {
               mission={activeMission}
               progress={activeMission.user_progress}
               dayNumber={activeMission.day_number}
-              onStatusChange={() => fetchMissions()}
+              onStatusChange={handleMissionStatusChange}
             />
           </div>
         )}
@@ -115,7 +155,10 @@ function ParcoursContent() {
                         Jour {m.day_number}
                       </span>
                       {isCompleted && (
-                        <span className="text-xs text-[#3E5E4A] font-medium">✓ Fait</span>
+                        <span className="text-xs text-[#3E5E4A] font-semibold flex items-center gap-1">
+                          <span>✓</span>
+                          <span>Fait</span>
+                        </span>
                       )}
                     </div>
                     <h5 className="font-semibold text-sm text-[#272522] line-clamp-1">{m.title}</h5>

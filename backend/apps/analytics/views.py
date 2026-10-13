@@ -20,11 +20,15 @@ class SummaryStatsView(APIView):
         since_date = date.today() - timedelta(days=days)
 
         # Suivi humeur et missions
-        progresses = DailyProgress.objects.filter(user=user, local_date__gte=since_date).order_by('local_date')
-        mood_entries_count = progresses.exclude(mood__isnull=True).exclude(mood='').count()
-        completed_missions_count = progresses.filter(mission_status='completed').count()
+        mood_entries_count = DailyProgress.objects.filter(
+            user=user, local_date__gte=since_date
+        ).exclude(mood__isnull=True).exclude(mood='').values('local_date').distinct().count()
 
-        # Actions terminées
+        completed_missions_count = DailyProgress.objects.filter(
+            user=user, mission_status='completed'
+        ).count()
+
+        # Actions personnelles terminées
         completed_actions_count = GoalAction.objects.filter(user=user, is_completed=True).count()
         active_goals_count = PersonalGoal.objects.filter(user=user, status='active').count()
 
@@ -36,11 +40,18 @@ class SummaryStatsView(APIView):
             'good': 4,
             'very_good': 5
         }
+        mood_progresses = DailyProgress.objects.filter(
+            user=user, local_date__gte=since_date
+        ).exclude(mood__isnull=True).exclude(mood='').order_by('local_date')
+
         mood_trend = []
-        for p in progresses:
-            if p.mood:
+        seen_dates = set()
+        for p in mood_progresses:
+            date_str = str(p.local_date)
+            if date_str not in seen_dates and p.mood:
+                seen_dates.add(date_str)
                 mood_trend.append({
-                    'date': str(p.local_date),
+                    'date': date_str,
                     'mood': p.mood,
                     'score': mood_map.get(p.mood, 3),
                     'intensity': p.mood_intensity
@@ -48,9 +59,17 @@ class SummaryStatsView(APIView):
 
         # Bilan hebdomadaire factuel et bienveillant
         week_ago = date.today() - timedelta(days=7)
-        week_moods = DailyProgress.objects.filter(user=user, local_date__gte=week_ago).exclude(mood__isnull=True).exclude(mood='').count()
-        week_missions = DailyProgress.objects.filter(user=user, local_date__gte=week_ago, mission_status='completed').count()
-        week_actions = GoalAction.objects.filter(user=user, is_completed=True, completed_at__date__gte=week_ago).count()
+        week_moods = DailyProgress.objects.filter(
+            user=user, local_date__gte=week_ago
+        ).exclude(mood__isnull=True).exclude(mood='').values('local_date').distinct().count()
+
+        week_missions = DailyProgress.objects.filter(
+            user=user, mission_status='completed', completed_at__date__gte=week_ago
+        ).count()
+
+        week_actions = GoalAction.objects.filter(
+            user=user, is_completed=True, completed_at__date__gte=week_ago
+        ).count()
 
         weekly_message = (
             f"Tu as renseigné ton humeur {week_moods} jour{'s' if week_moods > 1 else ''} cette semaine. "

@@ -60,7 +60,6 @@ class DailyProgress(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('user', 'local_date')
         ordering = ['-local_date']
 
     def __str__(self):

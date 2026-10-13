@@ -67,9 +67,9 @@ function DashboardContent() {
           {/* Right 1 Col: Suivi Humeur & Accès Rapide */}
           <div className="space-y-6">
             <MoodPicker
-              currentMood={todayData?.today_progress?.mood}
-              currentIntensity={todayData?.today_progress?.mood_intensity}
-              currentReflection={todayData?.today_progress?.reflection}
+              currentMood={todayData?.today_mood?.mood || todayData?.today_progress?.mood}
+              currentIntensity={todayData?.today_mood?.intensity || todayData?.today_progress?.mood_intensity}
+              currentReflection={todayData?.today_mood?.reflection || todayData?.today_progress?.reflection}
               onSaved={() => fetchToday()}
             />
 

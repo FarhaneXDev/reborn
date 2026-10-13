@@ -28,20 +28,31 @@ function ParcoursContent() {
         journeysApi.getToday().catch(() => null),
       ]);
 
-      const list = Array.isArray(allData) ? allData : allData.results || [];
+      const rawList = Array.isArray(allData) ? allData : allData?.results || [];
+
+      // Fusionner la progression fraîche de la mission du jour
+      const list = rawList.map((m) => {
+        if (todayData?.mission && m.id === todayData.mission.id && todayData.today_progress) {
+          return {
+            ...m,
+            user_progress: todayData.today_progress,
+          };
+        }
+        return m;
+      });
+
       setMissions(list);
 
-      // Sélectionner par défaut la mission du jour actuel si disponible, sinon la première
+      // Mettre à jour la mission active sélectionnée de manière sûre et synchronisée
       if (list.length > 0) {
-        if (!activeMission) {
-          const currentDayNum = todayData?.current_day_number || 1;
-          const matchToday = list.find((m) => m.day_number === currentDayNum) || list[0];
-          setActiveMission(matchToday);
-        } else {
-          // Mettre à jour l'activeMission avec ses données fraîches
-          const refreshed = list.find((m) => m.id === activeMission.id);
-          if (refreshed) setActiveMission(refreshed);
-        }
+        setActiveMission((prevActive) => {
+          if (!prevActive) {
+            const currentDayNum = todayData?.current_day_number || 1;
+            return list.find((m) => m.day_number === currentDayNum) || list[0];
+          }
+          // Toujours actualiser la mission sélectionnée avec ses données fraîches
+          return list.find((m) => m.id === prevActive.id) || prevActive;
+        });
       }
     } catch (err) {
       console.error(err);
@@ -52,6 +63,16 @@ function ParcoursContent() {
 
   useEffect(() => {
     fetchMissions();
+
+    // Re-synchronisation globale instantanée lors de la complétion d'une mission ou du retour sur l'onglet
+    const handleSync = () => fetchMissions();
+    window.addEventListener('reborn:mission-progress-updated', handleSync);
+    window.addEventListener('focus', handleSync);
+
+    return () => {
+      window.removeEventListener('reborn:mission-progress-updated', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
   }, []);
 
   const handleMissionStatusChange = (newStatus, missionId) => {
@@ -67,14 +88,17 @@ function ParcoursContent() {
         return m;
       })
     );
-    if (activeMission?.id === missionId) {
-      setActiveMission((prev) => ({
-        ...prev,
-        user_progress: prev.user_progress
-          ? { ...prev.user_progress, mission_status: newStatus }
-          : { mission_status: newStatus },
-      }));
-    }
+    setActiveMission((prev) => {
+      if (prev?.id === missionId) {
+        return {
+          ...prev,
+          user_progress: prev.user_progress
+            ? { ...prev.user_progress, mission_status: newStatus }
+            : { mission_status: newStatus },
+        };
+      }
+      return prev;
+    });
     // Re-synchroniser avec l'API en arrière-plan
     fetchMissions();
   };
@@ -120,6 +144,7 @@ function ParcoursContent() {
           <div className="space-y-3">
             <h4 className="text-xs sm:text-sm font-semibold text-[#272522] px-1">Mission sélectionnée</h4>
             <TodayMissionCard
+              key={activeMission.id}
               mission={activeMission}
               progress={activeMission.user_progress}
               dayNumber={activeMission.day_number}

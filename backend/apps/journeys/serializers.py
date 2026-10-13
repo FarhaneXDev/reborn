@@ -17,7 +17,7 @@ class DailyMissionSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return None
-        progress = DailyProgress.objects.filter(user=request.user, mission=obj).first()
+        progress = DailyProgress.objects.filter(user=request.user, mission=obj).order_by('-updated_at').first()
         if not progress:
             return None
         return {

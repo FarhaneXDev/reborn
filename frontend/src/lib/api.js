@@ -21,17 +21,27 @@ export function clearTokens() {
 }
 
 export async function apiFetch(endpoint, options = {}) {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const separator = endpoint.includes('?') ? '&' : '?';
+  const isGet = !options.method || options.method.toUpperCase() === 'GET';
+  const cacheBuster = isGet ? `${separator}_t=${Date.now()}` : '';
+  const url = `${API_BASE_URL}${endpoint}${cacheBuster}`;
   const tokens = getTokens();
 
   const headers = {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
     ...(tokens?.access ? { Authorization: `Bearer ${tokens.access}` } : {}),
     ...options.headers,
   };
 
   try {
-    const res = await fetch(url, { ...options, headers });
+    const res = await fetch(url, {
+      cache: 'no-store',
+      ...options,
+      headers,
+    });
 
     if (res.status === 401 && tokens?.refresh && !endpoint.includes('/auth/refresh/')) {
       // Tenter un rafraîchissement automatique

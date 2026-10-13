@@ -12,14 +12,16 @@ const THEME_NAMES = {
 
 export default function TodayMissionCard({ mission, progress, dayNumber, onStatusChange }) {
   const [showGentle, setShowGentle] = useState(false);
-  const [status, setStatus] = useState(progress?.mission_status || 'not_started');
+  const effectiveStatus = progress?.mission_status || mission?.user_progress?.mission_status || 'not_started';
+  const [status, setStatus] = useState(effectiveStatus);
   const [updating, setUpdating] = useState(false);
 
   // Synchronisation dynamique du statut dès que la mission sélectionnée ou son progrès change
   useEffect(() => {
-    setStatus(progress?.mission_status || 'not_started');
+    const current = progress?.mission_status || mission?.user_progress?.mission_status || 'not_started';
+    setStatus(current);
     setShowGentle(false);
-  }, [mission?.id, progress?.mission_status]);
+  }, [mission?.id, progress?.mission_status, mission?.user_progress?.mission_status]);
 
   if (!mission) {
     return (
@@ -39,6 +41,16 @@ export default function TodayMissionCard({ mission, progress, dayNumber, onStatu
         mission_status: newStatus,
       });
       setStatus(newStatus);
+
+      // Dispatcher un événement global pour que toutes les pages (Dashboard, Parcours...) se synchronisent immédiatement
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('reborn:mission-progress-updated', {
+            detail: { missionId: mission.id, status: newStatus },
+          })
+        );
+      }
+
       if (onStatusChange) onStatusChange(newStatus, mission.id);
     } catch (err) {
       alert(err.message || "Erreur de mise à jour du statut");

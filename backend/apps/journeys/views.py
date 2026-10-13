@@ -20,8 +20,16 @@ class MissionDetailView(generics.RetrieveAPIView):
 class TodayMissionView(APIView):
     def get(self, request):
         user = request.user
-        today = date.today()
         profile = getattr(user, 'profile', None)
+
+        if profile and profile.timezone:
+            try:
+                import zoneinfo
+                today = timezone.now().astimezone(zoneinfo.ZoneInfo(profile.timezone)).date()
+            except Exception:
+                today = date.today()
+        else:
+            today = date.today()
 
         if profile and profile.journey_start_date:
             day_diff = (today - profile.journey_start_date).days + 1
@@ -39,7 +47,7 @@ class TodayMissionView(APIView):
         serializer = DailyMissionSerializer(mission, context={'request': request})
 
         # Progression spécifique de cette mission pour l'utilisateur
-        progress = DailyProgress.objects.filter(user=user, mission=mission).first()
+        progress = DailyProgress.objects.filter(user=user, mission=mission).order_by('-updated_at').first()
         progress_data = DailyProgressSerializer(progress).data if progress else None
 
         # Humeur du jour
@@ -81,7 +89,7 @@ class DailyProgressRecordView(APIView):
 
         # 1. Si un mission_id est fourni -> Progression rattachée à cette mission
         if mission_id:
-            progress = DailyProgress.objects.filter(user=request.user, mission_id=mission_id).first()
+            progress = DailyProgress.objects.filter(user=request.user, mission_id=mission_id).order_by('-updated_at').first()
             if not progress:
                 progress = DailyProgress.objects.create(
                     user=request.user,

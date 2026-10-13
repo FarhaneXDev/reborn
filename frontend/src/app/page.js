@@ -26,6 +26,15 @@ function DashboardContent() {
 
   useEffect(() => {
     fetchToday();
+
+    const handleSync = () => fetchToday();
+    window.addEventListener('reborn:mission-progress-updated', handleSync);
+    window.addEventListener('focus', handleSync);
+
+    return () => {
+      window.removeEventListener('reborn:mission-progress-updated', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
   }, []);
 
   return (

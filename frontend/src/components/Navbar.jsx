@@ -23,13 +23,16 @@ export default function Navbar({ onOpenSos, userProfile, onToggleMobileMenu }) {
       const tMonth = now.getMonth();
       const tDay = now.getDate();
 
-      // Comparaison en jours calendaires stricts
+      // Comparaison en jours calendaires inclusifs :
+      // Le 10 octobre est le Jour 1, le 11 est le Jour 2, le 12 est le Jour 3
       const startUtc = Date.UTC(sYear, sMonth - 1, sDay);
       const todayUtc = Date.UTC(tYear, tMonth, tDay);
 
-      const diffDays = Math.round((todayUtc - startUtc) / (1000 * 60 * 60 * 24));
-      if (diffDays >= 0) {
+      const diffDays = Math.round((todayUtc - startUtc) / (1000 * 60 * 60 * 24)) + 1;
+      if (diffDays >= 1) {
         setNoContactDays(diffDays);
+      } else {
+        setNoContactDays(null);
       }
     }
   }, [userProfile]);

@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { AuthProvider } from '../../lib/auth';
 import AppLayout from '../../components/AppLayout';
+import MoodChart from '../../components/MoodChart';
 import { analyticsApi } from '../../lib/api';
 
 const PERIODS = [
@@ -117,6 +119,12 @@ function StatistiquesContent() {
               {stats?.completed_actions_count || 0}
             </div>
             <p className="text-xs text-[#6E685F] mt-1">petits gestes concrets réalisés</p>
+            <Link
+              href="/avenir"
+              className="text-[11px] text-[#7A638C] hover:underline font-medium inline-flex items-center gap-1 mt-2.5"
+            >
+              <span>→ Définir mes actions dans "Mon avenir"</span>
+            </Link>
           </div>
         </div>
 
@@ -129,39 +137,7 @@ function StatistiquesContent() {
             </p>
           </div>
 
-          {moodTrend.length === 0 ? (
-            <div className="py-12 text-center text-xs sm:text-sm text-[#8E877E]">
-              Pas encore assez d'enregistrements d'humeur sur cette période. Renseignez votre humeur sur le tableau de bord pour tracer la courbe.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Visual Bars chart */}
-              <div className="flex items-end gap-2 h-44 sm:h-48 pt-6 pb-2 border-b border-[#F4EFE6] overflow-x-auto">
-                {moodTrend.map((entry, idx) => {
-                  const heightPercent = (entry.score / 5) * 100;
-                  return (
-                    <div key={idx} className="flex-1 min-w-8 flex flex-col items-center gap-2 group">
-                      <span className="text-[10px] text-[#8E877E] opacity-0 group-hover:opacity-100 transition-opacity">
-                        {MOOD_LABELS[entry.score]}
-                      </span>
-                      <div
-                        style={{ height: `${heightPercent}%` }}
-                        className="w-full max-w-7 rounded-t-lg bg-[#DEECE2] group-hover:bg-[#4B7059] transition-colors"
-                      />
-                      <span className="text-[10px] text-[#6E685F] truncate w-full text-center">
-                        {entry.date.slice(5)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="flex justify-between text-xs text-[#8E877E]">
-                <span>Échelle de 1 (très bas) à 5 (très bien)</span>
-                <span>{moodTrend.length} point{moodTrend.length > 1 ? 's' : ''} enregistré{moodTrend.length > 1 ? 's' : ''}</span>
-              </div>
-            </div>
-          )}
+          <MoodChart trend={moodTrend} />
         </div>
       </main>
     </AppLayout>
